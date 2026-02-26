@@ -1,0 +1,57 @@
+{
+  "name": "leanvox",
+  "version": "0.1.0",
+  "description": "Official Node.js/TypeScript SDK for the Leanvox TTS API",
+  "author": "Leanvox",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/cjs/index.cjs",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      },
+      "require": {
+        "types": "./dist/cjs/index.d.cts",
+        "default": "./dist/cjs/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "npm run build:esm && npm run build:cjs",
+    "build:esm": "tsc -p tsconfig.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.2",
+    "typescript": "^5.4.0",
+    "vitest": "^3.0.0"
+  },
+  "keywords": [
+    "leanvox",
+    "tts",
+    "text-to-speech",
+    "speech-synthesis",
+    "voice",
+    "audio"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/leanvox/leanvox-node.git"
+  },
+  "homepage": "https://github.com/leanvox/leanvox-node"
+}
