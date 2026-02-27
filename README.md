@@ -61,6 +61,17 @@ for await (const chunk of stream) {
 writer.end();
 ```
 
+## Max (Instruction-Based Voice)
+
+```typescript
+const result = await client.generate({
+  text: "Welcome to our podcast!",
+  model: "max",
+  voiceInstructions: "A warm, confident female narrator with a slight British accent",
+});
+console.log(result.generatedVoiceId); // Reuse for consistent voice
+```
+
 ## Dialogue
 
 Generate multi-speaker dialogue:

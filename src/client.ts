@@ -27,6 +27,8 @@ interface RawGenerateResult {
   voice: string;
   characters: number;
   cost_cents: number;
+  generated_voice_id?: string;
+  suggestion?: string;
 }
 
 interface RawJob {
@@ -55,8 +57,8 @@ function validateGenerateParams(options: GenerateOptions): void {
     throw new InvalidRequestError("text must be 10,000 characters or fewer");
   }
   const model = options.model ?? "standard";
-  if (model !== "standard" && model !== "pro") {
-    throw new InvalidRequestError('model must be "standard" or "pro"');
+  if (model !== "standard" && model !== "pro" && model !== "max") {
+    throw new InvalidRequestError('model must be "standard", "pro", or "max"');
   }
   if (options.speed !== undefined && (options.speed < 0.5 || options.speed > 2.0)) {
     throw new InvalidRequestError("speed must be between 0.5 and 2.0");
@@ -76,7 +78,34 @@ function buildGenerateBody(options: GenerateOptions): Record<string, unknown> {
   const body: Record<string, unknown> = { text: options.text };
   const model = options.model ?? "standard";
   body["model"] = model;
-  if (options.voice) body["voice"] = options.voice;
+
+  if (model === "max") {
+    if (!options.voiceInstructions) {
+      throw new InvalidRequestError(
+        'voice_instructions is required when model is "max". ' +
+        'Example: voiceInstructions: "A warm, confident female narrator"'
+      );
+    }
+    if (options.voiceInstructions.length > 300) {
+      throw new InvalidRequestError(
+        `voiceInstructions must be 300 characters or less (got ${options.voiceInstructions.length})`
+      );
+    }
+    if (options.voice) {
+      throw new InvalidRequestError(
+        "voice and voiceInstructions are mutually exclusive"
+      );
+    }
+    body["voice_instructions"] = options.voiceInstructions;
+  } else {
+    if (options.voiceInstructions) {
+      throw new InvalidRequestError(
+        `voiceInstructions is only supported with model "max", not "${model}"`
+      );
+    }
+    if (options.voice) body["voice"] = options.voice;
+  }
+
   if (options.language) body["language"] = options.language;
   if (options.format) body["format"] = options.format;
   if (options.speed !== undefined) body["speed"] = options.speed;
@@ -117,6 +146,8 @@ export class Leanvox {
       voice: raw.voice,
       characters: raw.characters,
       costCents: raw.cost_cents,
+      generatedVoiceId: raw.generated_voice_id,
+      suggestion: raw.suggestion,
       download: async () => {
         const response = await fetch(raw.audio_url);
         const arrayBuffer = await response.arrayBuffer();
@@ -161,15 +192,16 @@ export class Leanvox {
     }
 
     const model = options.model ?? "pro";
-    if (model !== "standard" && model !== "pro") {
-      throw new InvalidRequestError('model must be "standard" or "pro"');
+    if (model !== "standard" && model !== "pro" && model !== "max") {
+      throw new InvalidRequestError('model must be "standard", "pro", or "max"');
     }
 
     const body = {
       model,
       lines: options.lines.map((line) => ({
         text: line.text,
-        voice: line.voice,
+        ...(line.voice ? { voice: line.voice } : {}),
+        ...(line.voiceInstructions ? { voice_instructions: line.voiceInstructions } : {}),
         language: line.language ?? "en",
         ...(model === "pro" && line.exaggeration !== undefined ? { exaggeration: line.exaggeration } : {}),
       })),
