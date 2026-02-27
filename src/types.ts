@@ -2,6 +2,8 @@ export interface GenerateOptions {
   text: string;
   model?: string;
   voice?: string;
+  /** Natural language voice description (Max model only, max 300 chars) */
+  voiceInstructions?: string;
   language?: string;
   format?: string;
   speed?: number;
@@ -10,7 +12,9 @@ export interface GenerateOptions {
 
 export interface DialogueLine {
   text: string;
-  voice: string;
+  voice?: string;
+  /** Natural language voice description (Max model only) */
+  voiceInstructions?: string;
   language?: string;
   exaggeration?: number;
 }
@@ -31,6 +35,10 @@ export interface GenerateResult {
   voice: string;
   characters: number;
   costCents: number;
+  /** Generated voice ID for reuse (Max model only) */
+  generatedVoiceId?: string;
+  /** Suggestion for better results */
+  suggestion?: string;
   download: () => Promise<Buffer>;
   save: (path: string) => Promise<void>;
 }
