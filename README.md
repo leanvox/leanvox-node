@@ -69,8 +69,8 @@ Generate multi-speaker dialogue:
 const result = await client.dialogue({
   model: "pro",
   lines: [
-    { text: "Welcome to the show!", voice: "emma", language: "en" },
-    { text: "Thanks for having me.", voice: "james", language: "en", exaggeration: 0.6 },
+    { text: "Welcome to the show!", voice: "narrator_warm_male", language: "en" },
+    { text: "Thanks for having me.", voice: "assistant_pro_female", language: "en", exaggeration: 0.6 },
   ],
   gapMs: 500,
 });
