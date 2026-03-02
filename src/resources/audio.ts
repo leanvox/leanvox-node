@@ -73,18 +73,18 @@ export class AudioResource {
       // File path
       const buffer = readFileSync(options.file);
       const filename = basename(options.file);
-      formData.append("file", new Blob([buffer]), filename);
+      formData.append("file", new Blob([new Uint8Array(buffer)]), filename);
     } else if (Buffer.isBuffer(options.file)) {
       const filename = options.filename ?? "audio.wav";
-      formData.append("file", new Blob([options.file]), filename);
+      formData.append("file", new Blob([new Uint8Array(options.file)]), filename);
     } else {
       // ReadableStream — collect to blob
       const reader = options.file.getReader();
-      const chunks: Uint8Array[] = [];
+      const chunks: BlobPart[] = [];
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        chunks.push(value);
+        chunks.push(new Uint8Array(value) as unknown as BlobPart);
       }
       const blob = new Blob(chunks);
       formData.append("file", blob, options.filename ?? "audio.wav");
