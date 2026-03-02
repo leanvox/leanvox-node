@@ -80,11 +80,11 @@ export class AudioResource {
     } else {
       // ReadableStream — collect to blob
       const reader = options.file.getReader();
-      const chunks: BlobPart[] = [];
+      const chunks: Uint8Array[] = [];
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        chunks.push(new Uint8Array(value) as unknown as BlobPart);
+        chunks.push(new Uint8Array(value));
       }
       const blob = new Blob(chunks);
       formData.append("file", blob, options.filename ?? "audio.wav");
