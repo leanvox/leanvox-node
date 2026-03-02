@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { resolveApiKey, ensureApiKey } from "./auth.js";
 import { HTTPClient } from "./http.js";
 import { InvalidRequestError, StreamingFormatError } from "./errors.js";
+import { AudioResource } from "./resources/audio.js";
 import { VoicesResource } from "./resources/voices.js";
 import { FilesResource } from "./resources/files.js";
 import { GenerationsResource } from "./resources/generations.js";
@@ -119,6 +120,7 @@ export class Leanvox {
   private http: HTTPClient;
   private autoAsyncThreshold: number;
 
+  readonly audio: AudioResource;
   readonly voices: VoicesResource;
   readonly files: FilesResource;
   readonly generations: GenerationsResource;
@@ -133,6 +135,7 @@ export class Leanvox {
 
     this.http = new HTTPClient({ baseUrl, apiKey, timeout, maxRetries });
 
+    this.audio = new AudioResource(this.http);
     this.voices = new VoicesResource(this.http);
     this.files = new FilesResource(this.http);
     this.generations = new GenerationsResource(this.http);
