@@ -106,6 +106,36 @@ export interface VoiceDesign {
   costCents?: number;
 }
 
+export interface VoiceOverOptions {
+  /** Audio file path, Buffer, or ReadableStream. */
+  file: string | Buffer | ReadableStream<Uint8Array>;
+  /** Filename hint when file is Buffer/stream. */
+  filename?: string;
+  /** Map speaker labels to voice IDs. e.g. {"Speaker 1": "narrator_warm_male"} */
+  voiceMap?: Record<string, string>;
+  /** Default voice for unmapped speakers. Default: "narrator_warm_male" */
+  defaultVoice?: string;
+  /** TTS model for re-voicing. Default: "pro" */
+  model?: string;
+  /** Silence gap between lines in ms. Default: 500 */
+  gapMs?: number;
+  /** STT features. Default: ["transcript", "diarization"] */
+  features?: string[];
+  /** Language hint for transcription. */
+  language?: string;
+  /** Expected number of speakers. */
+  numSpeakers?: number;
+}
+
+export interface VoiceOverResult {
+  /** Transcription result with segments and speakers. */
+  transcription: import("./resources/audio.js").TranscribeResult;
+  /** Re-voiced dialogue audio result. */
+  audio: GenerateResult;
+  /** Voice mapping used. */
+  voiceMap: Record<string, string>;
+}
+
 export interface LeanvoxOptions {
   apiKey?: string;
   baseUrl?: string;
