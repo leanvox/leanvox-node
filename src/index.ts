@@ -27,6 +27,8 @@ export type {
   AccountBalance,
   AccountUsage,
   VoiceDesign,
+  VoiceOverOptions,
+  VoiceOverResult,
 } from "./types.js";
 
 export { AudioResource } from "./resources/audio.js";

@@ -2,7 +2,7 @@ import { writeFileSync } from "node:fs";
 import { resolveApiKey, ensureApiKey } from "./auth.js";
 import { HTTPClient } from "./http.js";
 import { InvalidRequestError, StreamingFormatError } from "./errors.js";
-import { AudioResource } from "./resources/audio.js";
+import { AudioResource, type TranscribeResult } from "./resources/audio.js";
 import { VoicesResource } from "./resources/voices.js";
 import { FilesResource } from "./resources/files.js";
 import { GenerationsResource } from "./resources/generations.js";
@@ -14,6 +14,8 @@ import type {
   AsyncGenerateOptions,
   GenerateResult,
   Job,
+  VoiceOverOptions,
+  VoiceOverResult,
 } from "./types.js";
 
 const DEFAULT_BASE_URL = "https://api.leanvox.com";
@@ -232,6 +234,65 @@ export class Leanvox {
   async listJobs(): Promise<Job[]> {
     const raw = await this.http.request<RawJob[]>("GET", "/v1/jobs");
     return raw.map(mapJob);
+  }
+
+  /**
+   * Transcribe audio and re-voice it with different voices.
+   * Chains audio.transcribe() → dialogue() for one-call re-voicing.
+   */
+  async voiceover(options: VoiceOverOptions): Promise<VoiceOverResult> {
+    // Step 1: Transcribe with diarization
+    const transcription = await this.audio.transcribe({
+      file: options.file,
+      filename: options.filename,
+      language: options.language,
+      features: options.features ?? ["transcript", "diarization"],
+      numSpeakers: options.numSpeakers,
+    });
+
+    // Step 2: Build dialogue lines from transcript segments
+    const voiceMap = options.voiceMap ?? {};
+    const defaultVoice = options.defaultVoice ?? "narrator_warm_male";
+    const lines: Array<{ text: string; voice: string; language: string }> = [];
+
+    for (const segment of transcription.transcript.segments) {
+      const speaker = segment.speaker ?? "Speaker 1";
+      const voice = voiceMap[speaker] ?? defaultVoice;
+      lines.push({
+        text: segment.text.trim(),
+        voice,
+        language: transcription.language ?? "en",
+      });
+    }
+
+    // Merge consecutive lines from same speaker
+    const merged: typeof lines = [];
+    for (const line of lines) {
+      if (merged.length > 0 && merged[merged.length - 1].voice === line.voice) {
+        merged[merged.length - 1].text += " " + line.text;
+      } else {
+        merged.push({ ...line });
+      }
+    }
+
+    // Dialogue requires at least 2 lines
+    if (merged.length < 2) {
+      if (merged.length === 1) {
+        merged.push({ text: "...", voice: merged[0].voice, language: merged[0].language });
+      } else {
+        throw new InvalidRequestError("No transcript segments found to re-voice");
+      }
+    }
+
+    // Step 3: Generate dialogue
+    const model = options.model ?? "pro";
+    const audio = await this.dialogue({
+      lines: merged,
+      model,
+      gapMs: options.gapMs ?? 500,
+    });
+
+    return { transcription, audio, voiceMap };
   }
 
   private async generateAsyncAndPoll(options: GenerateOptions): Promise<GenerateResult> {
