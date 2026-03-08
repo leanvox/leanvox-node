@@ -59,6 +59,14 @@ export interface TranscribeResult {
   usage?: TranscribeUsage;
 }
 
+interface TranscriptionJobResponse {
+  job_id: string;
+  status: "pending" | "processing" | "completed" | "failed";
+  poll_url?: string;
+  result?: TranscribeResult;
+  error_message?: string;
+}
+
 export class AudioResource {
   constructor(private http: HTTPClient) {}
 
@@ -108,10 +116,62 @@ export class AudioResource {
       formData.append("num_speakers", String(options.numSpeakers));
     }
 
-    return this.http.upload<TranscribeResult>(
+    const response = await this.http.uploadRaw<TranscribeResult | TranscriptionJobResponse>(
       "/v1/audio/transcribe",
       formData,
       600_000, // 10 min timeout
     );
+
+    // If status is 200, return result directly
+    if (response.status === 200) {
+      return response.data as TranscribeResult;
+    }
+
+    // If status is 202, poll for completion
+    if (response.status === 202) {
+      const jobResponse = response.data as TranscriptionJobResponse;
+      return this._pollTranscriptionJob(jobResponse.job_id);
+    }
+
+    // Should not reach here due to error handling in uploadRaw
+    throw new Error(`Unexpected response status: ${response.status}`);
+  }
+
+  /**
+   * Poll for transcription job completion.
+   */
+  private async _pollTranscriptionJob(jobId: string): Promise<TranscribeResult> {
+    const pollInterval = 3000; // 3 seconds
+    const maxPollTime = 600_000; // 10 minutes
+    const startTime = Date.now();
+
+    while (true) {
+      // Check if we've exceeded max poll time
+      if (Date.now() - startTime > maxPollTime) {
+        throw new Error(`Transcription job ${jobId} timed out after ${maxPollTime}ms`);
+      }
+
+      // Poll the job status
+      const jobResponse = await this.http.request<TranscriptionJobResponse>(
+        "GET",
+        `/v1/audio/transcriptions/${jobId}`,
+      );
+
+      if (jobResponse.status === "completed") {
+        if (!jobResponse.result) {
+          throw new Error(`Transcription job ${jobId} completed but no result returned`);
+        }
+        return jobResponse.result;
+      }
+
+      if (jobResponse.status === "failed") {
+        throw new Error(
+          `Transcription job ${jobId} failed: ${jobResponse.error_message ?? "Unknown error"}`,
+        );
+      }
+
+      // Status is pending or processing, wait before polling again
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    }
   }
 }

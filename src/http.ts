@@ -232,4 +232,69 @@ export class HTTPClient {
 
     throw new LeanvoxError("Max retries exceeded", "max_retries", 0);
   }
+
+  async uploadRaw<T>(
+    path: string,
+    formData: FormData,
+    timeoutMs?: number,
+  ): Promise<{ status: number; data: T }> {
+    const url = new URL(path, this.baseUrl);
+    const effectiveTimeout = timeoutMs ?? this.timeout * 1000;
+
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), effectiveTimeout);
+
+      try {
+        const headers: Record<string, string> = {
+          Authorization: `Bearer ${this.apiKey}`,
+          "User-Agent": `leanvox-node/${SDK_VERSION}`,
+        };
+
+        const response = await fetch(url.toString(), {
+          method: "POST",
+          headers,
+          body: formData,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timer);
+
+        if (response.ok || response.status === 202) {
+          const data = (await response.json()) as T;
+          return { status: response.status, data };
+        }
+
+        if (RETRYABLE_STATUS_CODES.has(response.status) && attempt < this.maxRetries) {
+          const delay = BACKOFF_SCHEDULE[attempt] ?? BACKOFF_SCHEDULE[BACKOFF_SCHEDULE.length - 1]!;
+          await this.sleep(delay);
+          continue;
+        }
+
+        let body: unknown;
+        try {
+          body = await response.json();
+        } catch {
+          body = { error: { message: response.statusText } };
+        }
+        raiseForStatus(response.status, body);
+      } catch (err) {
+        clearTimeout(timer);
+        if (err instanceof LeanvoxError) throw err;
+
+        if (attempt < this.maxRetries) {
+          const delay = BACKOFF_SCHEDULE[attempt] ?? BACKOFF_SCHEDULE[BACKOFF_SCHEDULE.length - 1]!;
+          await this.sleep(delay);
+          continue;
+        }
+        throw new LeanvoxError(
+          `Network error: ${err instanceof Error ? err.message : String(err)}`,
+          "network_error",
+          0,
+        );
+      }
+    }
+
+    throw new LeanvoxError("Max retries exceeded", "max_retries", 0);
+  }
 }
