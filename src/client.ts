@@ -35,20 +35,26 @@ interface RawGenerateResult {
 }
 
 interface RawJob {
-  id: string;
+  id?: string;
+  job_id?: string;
   status: string;
   estimated_seconds?: number;
+  estimated_cost_cents?: number;
   audio_url?: string;
   error?: string;
+  error_message?: string;
+  chunks_done?: number;
+  chunks_total?: number;
+  cost_cents?: number;
 }
 
 function mapJob(raw: RawJob): Job {
   return {
-    id: raw.id,
+    id: raw.job_id ?? raw.id ?? "",
     status: raw.status,
     estimatedSeconds: raw.estimated_seconds,
     audioUrl: raw.audio_url,
-    error: raw.error,
+    error: raw.error_message ?? raw.error,
   };
 }
 
@@ -222,18 +228,18 @@ export class Leanvox {
     const body: Record<string, unknown> = buildGenerateBody(options);
     if (options.webhookUrl) body["webhook_url"] = options.webhookUrl;
 
-    const raw = await this.http.request<RawJob>("POST", "/v1/tts/generate-async", { body });
+    const raw = await this.http.request<RawJob>("POST", "/v1/tts/generate/async", { body });
     return mapJob(raw);
   }
 
   async getJob(jobId: string): Promise<Job> {
-    const raw = await this.http.request<RawJob>("GET", `/v1/jobs/${jobId}`);
+    const raw = await this.http.request<RawJob>("GET", `/v1/tts/jobs/${jobId}`);
     return mapJob(raw);
   }
 
   async listJobs(): Promise<Job[]> {
-    const raw = await this.http.request<RawJob[]>("GET", "/v1/jobs");
-    return raw.map(mapJob);
+    const data = await this.http.request<{ jobs: RawJob[] }>("GET", "/v1/tts/jobs");
+    return (data.jobs ?? []).map(mapJob);
   }
 
   /**
