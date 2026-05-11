@@ -317,7 +317,7 @@ describe("Leanvox client", () => {
 
       // Should have called async endpoint then polled
       const firstUrl = fetchMock.mock.calls[0][0] as string;
-      expect(firstUrl).toContain("generate-async");
+      expect(firstUrl).toContain("generate/async");
     });
   });
 });

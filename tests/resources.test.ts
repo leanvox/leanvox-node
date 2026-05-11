@@ -156,4 +156,82 @@ describe("resources", () => {
       expect(body.amount_cents).toBe(2000);
     });
   });
+
+  describe("audio", () => {
+    it("returns async STT job when wait is false", async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 202,
+        json: async () => ({
+          job_id: "job_stt_123",
+          job_type: "stt",
+          status: "pending",
+          poll_url: "/v1/jobs/job_stt_123",
+        }),
+        headers: new Headers(),
+      });
+      globalThis.fetch = fetchMock;
+
+      const client = new Leanvox({ apiKey: VALID_KEY });
+      const result = await client.audio.transcribe({
+        file: Buffer.from("fake audio"),
+        filename: "meeting.mp3",
+        forceAsync: true,
+        wait: false,
+      });
+
+      expect(result).toMatchObject({
+        id: "job_stt_123",
+        jobType: "stt",
+        status: "pending",
+        pollUrl: "/v1/jobs/job_stt_123",
+      });
+      const body = fetchMock.mock.calls[0][1].body as FormData;
+      expect(body.get("force_async")).toBe("true");
+    });
+
+    it("polls canonical jobs endpoint for async transcription", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 202,
+          json: async () => ({
+            job_id: "job_stt_123",
+            job_type: "stt",
+            status: "pending",
+          }),
+          headers: new Headers(),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            id: "job_stt_123",
+            job_type: "stt",
+            status: "completed",
+            result: {
+              id: "tr_123",
+              duration_seconds: 12,
+              language: "en",
+              confidence: 0.9,
+              formatted_transcript: "Speaker 1: Hello",
+              transcript: { text: "Hello", segments: [] },
+            },
+          }),
+          headers: new Headers(),
+        });
+      globalThis.fetch = fetchMock;
+
+      const client = new Leanvox({ apiKey: VALID_KEY });
+      const result = await client.audio.transcribe({
+        file: Buffer.from("fake audio"),
+        filename: "meeting.mp3",
+        forceAsync: true,
+      });
+
+      expect(result).toMatchObject({ id: "tr_123", formatted_transcript: "Speaker 1: Hello" });
+      expect(fetchMock.mock.calls[1][0]).toContain("/v1/jobs/job_stt_123");
+    });
+  });
 });
