@@ -32,7 +32,7 @@ export type {
 } from "./types.js";
 
 export { AudioResource } from "./resources/audio.js";
-export type { TranscribeOptions, TranscribeResult, TranscriptSegment, TranscriptData, SpeakersData, SummaryData, TranscribeUsage } from "./resources/audio.js";
+export type { TranscribeOptions, TranscriptionJob, TranscribeResult, TranscriptSegment, TranscriptData, SpeakersData, SummaryData, TranscribeUsage } from "./resources/audio.js";
 export { VoicesResource } from "./resources/voices.js";
 export { FilesResource } from "./resources/files.js";
 export { GenerationsResource } from "./resources/generations.js";

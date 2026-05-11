@@ -38,11 +38,13 @@ interface RawJob {
   id?: string;
   job_id?: string;
   status: string;
+  job_type?: string;
   estimated_seconds?: number;
   estimated_cost_cents?: number;
   audio_url?: string;
   error?: string;
   error_message?: string;
+  result?: unknown;
   chunks_done?: number;
   chunks_total?: number;
   cost_cents?: number;
@@ -52,9 +54,11 @@ function mapJob(raw: RawJob): Job {
   return {
     id: raw.job_id ?? raw.id ?? "",
     status: raw.status,
+    jobType: raw.job_type,
     estimatedSeconds: raw.estimated_seconds,
     audioUrl: raw.audio_url,
     error: raw.error_message ?? raw.error,
+    result: raw.result,
   };
 }
 
@@ -233,13 +237,16 @@ export class Leanvox {
   }
 
   async getJob(jobId: string): Promise<Job> {
-    const raw = await this.http.request<RawJob>("GET", `/v1/tts/jobs/${jobId}`);
+    const raw = await this.http.request<RawJob>("GET", `/v1/jobs/${jobId}`);
     return mapJob(raw);
   }
 
-  async listJobs(): Promise<Job[]> {
-    const data = await this.http.request<{ jobs: RawJob[] }>("GET", "/v1/tts/jobs");
-    return (data.jobs ?? []).map(mapJob);
+  async listJobs(options?: { type?: "stt" | "tts" | "all" }): Promise<Job[]> {
+    const data = await this.http.request<{ jobs: RawJob[] } | RawJob[]>("GET", "/v1/jobs", {
+      params: options?.type ? { type: options.type } : undefined,
+    });
+    const jobs = Array.isArray(data) ? data : data.jobs;
+    return (jobs ?? []).map(mapJob);
   }
 
   /**
@@ -254,7 +261,7 @@ export class Leanvox {
       language: options.language,
       features: options.features ?? ["transcript", "diarization"],
       numSpeakers: options.numSpeakers,
-    });
+    }) as TranscribeResult;
 
     // Step 2: Build dialogue lines from transcript segments
     const voiceMap = options.voiceMap ?? {};

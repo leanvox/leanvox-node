@@ -63,9 +63,11 @@ export interface VoiceList {
 export interface Job {
   id: string;
   status: string;
+  jobType?: string;
   estimatedSeconds?: number;
   audioUrl?: string;
   error?: string;
+  result?: unknown;
 }
 
 export interface FileExtractResult {
